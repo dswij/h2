@@ -746,6 +746,19 @@ impl Prioritize {
                                 // frame and wait for a window update...
                                 stream.pending_send.push_front(buffer, frame.into());
 
+
+                                if self.pending_send.is_empty() {
+                                    // This is when the hang occurs
+                                    // We check streams waiting for pending capacity
+                                    tracing::trace!("OOPS");
+
+                                    let mut counter = 0;
+                                    while let Some(stream) = self.pending_capacity.pop(store) {
+                                        counter += 1;
+                                        tracing::trace!("id: {:?}, available: {:?}, count: {:?}", stream.id, stream.send_flow.available(), counter);
+                                    }
+                                }
+
                                 continue;
                             }
 

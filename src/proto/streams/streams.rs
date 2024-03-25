@@ -871,22 +871,22 @@ impl Inner {
         let send_buffer = &mut *send_buffer;
 
         // Send WINDOW_UPDATE frames first
-        //
-        // TODO: It would probably be better to interleave updates w/ data
-        // frames.
-        ready!(self
+        let recv = self
             .actions
             .recv
-            .poll_complete(cx, &mut self.store, &mut self.counts, dst))?;
+            .poll_complete(cx, &mut self.store, &mut self.counts, dst)?;
 
-        // Send any other pending frames
-        ready!(self.actions.send.poll_complete(
+        let send = self.actions.send.poll_complete(
             cx,
             send_buffer,
             &mut self.store,
             &mut self.counts,
-            dst
-        ))?;
+            dst,
+        )?;
+
+        if matches!(recv, Poll::Pending) || matches!(send, Poll::Pending) {
+            return Poll::Pending;
+        }
 
         // Nothing else to do, track the task
         self.actions.task = Some(cx.waker().clone());
